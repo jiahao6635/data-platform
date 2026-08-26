@@ -49,7 +49,7 @@
 docker compose up --build -d
 ```
 
-打开 [http://localhost:8088](http://localhost:8088)。后端健康检查地址为 [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)。
+打开 [http://localhost:8089](http://localhost:8089)。后端健康检查地址为 [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)。
 
 默认不连接 Kafka，先通过页面右上角“导入快照”上传 `.ndjson` 文件即可。
 
@@ -77,7 +77,7 @@ cp .env.example .env
 Docker 本地部署的回调地址为：
 
 ```text
-http://localhost:8088/api/v1/auth/callback
+http://localhost:8089/api/v1/auth/callback
 ```
 
 本地 Vite 开发时应改为：
