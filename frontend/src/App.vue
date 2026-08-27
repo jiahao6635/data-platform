@@ -487,10 +487,13 @@ function startFeishuLogin() {
 
 async function logout() {
   try {
-    authStatus.value = await api.logout()
-    summary.value = emptySummary
+    await api.logout()
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '退出登录失败')
+    // 即使服务端登出失败，也清除本地状态，确保用户能够退出登录
+    console.warn('服务端登出失败，已清除本地会话:', error instanceof Error ? error.message : error)
+  } finally {
+    authStatus.value = { authEnabled: authStatus.value.authEnabled, configured: authStatus.value.configured, authenticated: false, user: null }
+    summary.value = emptySummary
   }
 }
 
@@ -527,7 +530,14 @@ onMounted(initialize)
 
   <div v-else-if="authCheckError" class="auth-page">
     <div class="auth-card">
-      <div class="auth-brand-mark"><span /><span /><span /></div>
+      <div class="auth-brand-mark">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="12" fill="#3370FF"/>
+          <path d="M12 34 C12 22, 22 13, 30 9 C33 7, 36 7, 37 10 C37 12, 33 16, 25 23" 
+                stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="38" cy="10" r="3.5" fill="white"/>
+        </svg>
+      </div>
       <span class="auth-kicker">DATA ASSET PLATFORM</span>
       <h1>暂时无法连接数据平台</h1>
       <p>{{ authCheckError }}</p>
@@ -538,7 +548,14 @@ onMounted(initialize)
   <div v-else-if="authStatus.authEnabled && !authStatus.authenticated" class="auth-page">
     <div class="auth-grid" />
     <div class="auth-card">
-      <div class="auth-brand-mark"><span /><span /><span /></div>
+      <div class="auth-brand-mark">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="12" fill="#3370FF"/>
+          <path d="M12 34 C12 22, 22 13, 30 9 C33 7, 36 7, 37 10 C37 12, 33 16, 25 23" 
+                stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="38" cy="10" r="3.5" fill="white"/>
+        </svg>
+      </div>
       <span class="auth-kicker">SIGMOB · DATA OS</span>
       <h1>登录 DataScope</h1>
       <p>使用公司飞书账号验证身份后，进入数据资产看板。</p>
@@ -559,8 +576,10 @@ onMounted(initialize)
       <button class="feishu-login-button" :disabled="!authStatus.configured || loginRedirecting" @click="startFeishuLogin">
         <span class="feishu-logo">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 24L16 8L24 24H8Z" fill="currentColor" opacity="0.9"/>
-            <path d="M12 20L16 12L20 20H12Z" fill="currentColor"/>
+            <rect width="32" height="32" rx="7" fill="#3370FF"/>
+            <path d="M8 23 C8 15, 14 9, 20 7 C22 6, 24 6, 25 8 C25 9, 22 11, 17 16" 
+                  stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="25" cy="8" r="2.2" fill="white"/>
           </svg>
         </span>
         使用飞书登录
