@@ -180,7 +180,7 @@ const bucketOption = computed<EChartsOption>(() => ({
     top: 'middle',
     itemWidth: 9,
     itemHeight: 9,
-    textStyle: { color: '#8ca3b7', fontSize: 11 },
+    textStyle: { color: '#8ca3b7', fontSize: 13 },
     formatter: (name: string) => shortName(name, 19),
   },
   series: [
@@ -200,13 +200,13 @@ const bucketOption = computed<EChartsOption>(() => ({
       type: 'text',
       left: '25%',
       top: '45%',
-      style: { text: `${buckets.value.length}`, fill: '#edf8ff', font: '600 28px Inter' },
+      style: { text: `${buckets.value.length}`, fill: '#edf8ff', font: '600 30px Inter' },
     },
     {
       type: 'text',
       left: '23%',
       top: '58%',
-      style: { text: 'BUCKETS', fill: '#668198', font: '10px Inter' },
+      style: { text: 'BUCKETS', fill: '#668198', font: '12px Inter' },
     },
   ],
 }))
