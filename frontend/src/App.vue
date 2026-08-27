@@ -41,6 +41,7 @@ const activeView = ref<ViewName>('overview')
 const authLoading = ref(true)
 const authCheckError = ref('')
 const authError = ref('')
+const loginRedirecting = ref(false)
 const authStatus = ref<AuthStatus>({
   authEnabled: false,
   configured: false,
@@ -393,7 +394,8 @@ async function initialize() {
 }
 
 function startFeishuLogin() {
-  if (!authStatus.value.configured) return
+  if (!authStatus.value.configured || loginRedirecting.value) return
+  loginRedirecting.value = true
   window.location.assign(api.loginUrl())
 }
 
@@ -468,7 +470,7 @@ onMounted(initialize)
           <span>飞书应用参数尚未配置，请联系管理员设置 App ID、App Secret 和回调地址。</span>
         </div>
       </div>
-      <button class="feishu-login-button" :disabled="!authStatus.configured" @click="startFeishuLogin">
+      <button class="feishu-login-button" :disabled="!authStatus.configured || loginRedirecting" @click="startFeishuLogin">
         <span class="feishu-logo">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M8 24L16 8L24 24H8Z" fill="currentColor" opacity="0.9"/>

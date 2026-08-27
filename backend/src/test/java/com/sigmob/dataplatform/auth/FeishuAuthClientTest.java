@@ -1,6 +1,8 @@
 package com.sigmob.dataplatform.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -9,6 +11,7 @@ import java.time.ZoneId;
 
 import com.sigmob.dataplatform.config.AppProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -22,8 +25,19 @@ class FeishuAuthClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         var client = new FeishuAuthClient(builder, properties());
 
-        server.expect(requestTo("https://accounts.feishu.cn/oauth/v3/token"))
+        server.expect(requestTo("https://open.feishu.cn/open-apis/authen/v2/oauth/token"))
                 .andExpect(method(HttpMethod.POST))
+                .andExpect(header(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8"))
+                .andExpect(content().json("""
+                        {
+                          "grant_type": "authorization_code",
+                          "client_id": "cli_test",
+                          "client_secret": "secret",
+                          "code": "oauth-code",
+                          "redirect_uri": "http://localhost:5173/api/v1/auth/callback",
+                          "code_verifier": "pkce-verifier"
+                        }
+                        """))
                 .andRespond(withSuccess("""
                         {"code":0,"access_token":"user-token","expires_in":7200}
                         """, MediaType.APPLICATION_JSON));

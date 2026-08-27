@@ -1,6 +1,7 @@
 package com.sigmob.dataplatform.auth;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sigmob.dataplatform.config.AppProperties;
@@ -8,14 +9,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @Service
 public class FeishuAuthClient {
 
-    private static final String TOKEN_URL = "https://accounts.feishu.cn/oauth/v3/token";
+    // 授权页 PKCE 目前仍需搭配 v2 换票。飞书文档（获取授权码）：
+    // 「在该接口使用 PKCE 时，可以暂时搭配获取 user_access_token（v2 版本）换取 Token。后续将尽快支持最新的 Token 端点。」
+    private static final String TOKEN_URL = "https://open.feishu.cn/open-apis/authen/v2/oauth/token";
     private static final String USER_INFO_URL = "https://open.feishu.cn/open-apis/authen/v1/user_info";
     private static final String CONTACT_USER_URL = "https://open.feishu.cn/open-apis/contact/v3/users/{user_id}";
     private static final int MAX_ERROR_BODY_LENGTH = 2000;
@@ -62,20 +64,20 @@ public class FeishuAuthClient {
             String code,
             String codeVerifier
     ) {
-        var form = new LinkedMultiValueMap<String, String>();
-        form.add("grant_type", "authorization_code");
-        form.add("client_id", settings.clientId());
-        form.add("client_secret", settings.clientSecret());
-        form.add("code", code);
-        form.add("redirect_uri", settings.redirectUri());
-        form.add("code_verifier", codeVerifier);
+        var body = new LinkedHashMap<String, String>();
+        body.put("grant_type", "authorization_code");
+        body.put("client_id", settings.clientId());
+        body.put("client_secret", settings.clientSecret());
+        body.put("code", code);
+        body.put("redirect_uri", settings.redirectUri());
+        body.put("code_verifier", codeVerifier);
 
         TokenResponse response;
         try {
             response = restClient.post()
                     .uri(TOKEN_URL)
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(form)
+                    .contentType(new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8))
+                    .body(body)
                     .retrieve()
                     .body(TokenResponse.class);
         } catch (RestClientResponseException exception) {

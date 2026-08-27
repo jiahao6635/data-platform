@@ -3,13 +3,13 @@ package com.sigmob.dataplatform.controller;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.sigmob.dataplatform.auth.AuthModels;
 import com.sigmob.dataplatform.auth.AuthSession;
 import com.sigmob.dataplatform.auth.FeishuAuthClient;
+import com.sigmob.dataplatform.auth.Pkce;
 import com.sigmob.dataplatform.config.AppProperties;
 import com.sigmob.dataplatform.service.UserAccountService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,9 +32,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class AuthController {
 
     private static final String AUTHORIZE_URL = "https://accounts.feishu.cn/open-apis/authen/v1/authorize";
+    private static final long PKCE_TTL_MILLIS = 10 * 60 * 1000L;
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final SecureRandom secureRandom = new SecureRandom();
+    private final ConcurrentHashMap<String, PendingPkce> pendingPkce = new ConcurrentHashMap<>();
     private final AppProperties properties;
     private final FeishuAuthClient feishuAuthClient;
     private final UserAccountService userAccountService;
@@ -58,26 +60,24 @@ public class AuthController {
         }
 
         HttpSession session = request.getSession(true);
-        // 幂等登录：会话中已有未完成的授权流程时复用同一对 state/code_verifier，
-        // 避免多标签页或重复点击导致授权页的 code_challenge 与回调时的 verifier 不匹配（飞书 20049）。
-        String state = sessionValue(session, AuthSession.OAUTH_STATE_ATTRIBUTE);
-        String codeVerifier = sessionValue(session, AuthSession.PKCE_VERIFIER_ATTRIBUTE);
-        if (state.isBlank() || codeVerifier.isBlank()) {
-            state = randomUrlSafe(32);
-            codeVerifier = randomUrlSafe(64);
-            session.setAttribute(AuthSession.OAUTH_STATE_ATTRIBUTE, state);
-            session.setAttribute(AuthSession.PKCE_VERIFIER_ATTRIBUTE, codeVerifier);
-        }
+        // 每次登录生成独立的 state/code_verifier，并按 state 保存。
+        // 不能只存在当前 Session 里：重复点击、多标签、Chrome 双发 GET 都会覆盖 verifier，
+        // 用户完成的是旧授权页，回调就会被飞书以 20049 PKCE 失败拒绝。
+        String state = Pkce.randomUrlSafe(secureRandom, Pkce.RANDOM_BYTE_LENGTH);
+        String codeVerifier = Pkce.randomUrlSafe(secureRandom, Pkce.RANDOM_BYTE_LENGTH);
+        rememberPkce(state, codeVerifier);
+        session.setAttribute(AuthSession.OAUTH_STATE_ATTRIBUTE, state);
+        session.setAttribute(AuthSession.PKCE_VERIFIER_ATTRIBUTE, codeVerifier);
 
         String location = UriComponentsBuilder.fromUriString(AUTHORIZE_URL)
                 .queryParam("client_id", settings.clientId())
                 .queryParam("response_type", "code")
                 .queryParam("redirect_uri", settings.redirectUri())
                 .queryParam("state", state)
-                .queryParam("code_challenge", sha256UrlSafe(codeVerifier))
+                .queryParam("code_challenge", Pkce.s256Challenge(codeVerifier))
                 .queryParam("code_challenge_method", "S256")
-                .build()
                 .encode()
+                .build()
                 .toUriString();
 
         return ResponseEntity.status(HttpStatus.FOUND)
@@ -100,9 +100,11 @@ public class AuthController {
             return;
         }
 
-        String expectedState = sessionValue(session, AuthSession.OAUTH_STATE_ATTRIBUTE);
-        String codeVerifier = sessionValue(session, AuthSession.PKCE_VERIFIER_ATTRIBUTE);
-        if (code == null || code.isBlank() || !constantTimeEquals(expectedState, state) || codeVerifier.isBlank()) {
+        String codeVerifier = consumePkce(state);
+        if (codeVerifier.isBlank() && session != null && constantTimeEquals(sessionValue(session, AuthSession.OAUTH_STATE_ATTRIBUTE), state)) {
+            codeVerifier = sessionValue(session, AuthSession.PKCE_VERIFIER_ATTRIBUTE);
+        }
+        if (code == null || code.isBlank() || codeVerifier.isBlank()) {
             clearOAuthState(session);
             redirectWithError(response, "invalid_state");
             return;
@@ -110,7 +112,11 @@ public class AuthController {
 
         try {
             AuthModels.AuthUser user = feishuAuthClient.authenticate(code, codeVerifier);
-            request.changeSessionId();
+            if (session == null) {
+                session = request.getSession(true);
+            } else {
+                request.changeSessionId();
+            }
             clearOAuthState(session);
 
             log.info("飞书登录成功: openId={}, name={}", user.openId(), user.name());
@@ -172,6 +178,23 @@ public class AuthController {
         return value instanceof String text ? text : "";
     }
 
+    private void rememberPkce(String state, String codeVerifier) {
+        long now = System.currentTimeMillis();
+        pendingPkce.entrySet().removeIf(entry -> entry.getValue().expiresAtMillis() <= now);
+        pendingPkce.put(state, new PendingPkce(codeVerifier, now + PKCE_TTL_MILLIS));
+    }
+
+    private String consumePkce(String state) {
+        if (state == null || state.isBlank()) {
+            return "";
+        }
+        PendingPkce pending = pendingPkce.remove(state);
+        if (pending == null || pending.expiresAtMillis() <= System.currentTimeMillis()) {
+            return "";
+        }
+        return pending.codeVerifier();
+    }
+
     private boolean constantTimeEquals(String expected, String actual) {
         if (expected == null || expected.isBlank() || actual == null) {
             return false;
@@ -181,19 +204,6 @@ public class AuthController {
                 actual.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String randomUrlSafe(int bytes) {
-        byte[] value = new byte[bytes];
-        secureRandom.nextBytes(value);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(value);
-    }
-
-    private String sha256UrlSafe(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.US_ASCII));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("当前 JVM 不支持 SHA-256", exception);
-        }
+    private record PendingPkce(String codeVerifier, long expiresAtMillis) {
     }
 }
