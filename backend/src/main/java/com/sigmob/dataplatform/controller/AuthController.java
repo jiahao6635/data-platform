@@ -73,7 +73,7 @@ public class AuthController {
                 .queryParam("client_id", settings.clientId())
                 .queryParam("response_type", "code")
                 .queryParam("redirect_uri", settings.redirectUri())
-                .queryParam("scope", "contact:contact.base:readonly")
+                .queryParam("scope", "contact:user.base:readonly contact:user.email:readonly")
                 .queryParam("state", state)
                 .queryParam("code_challenge", Pkce.s256Challenge(codeVerifier))
                 .queryParam("code_challenge_method", "S256")
