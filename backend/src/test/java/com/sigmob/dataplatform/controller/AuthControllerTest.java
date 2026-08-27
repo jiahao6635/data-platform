@@ -37,6 +37,7 @@ class AuthControllerTest {
                 .startsWith("https://accounts.feishu.cn/open-apis/authen/v1/authorize?")
                 .contains("client_id=cli_test")
                 .contains("response_type=code")
+                .contains("scope=contact:contact.base:readonly")
                 .contains("code_challenge_method=S256");
         assertThat(authorize.getQueryParams().getFirst("redirect_uri"))
                 .isEqualTo("http://localhost:5173/api/v1/auth/callback");
