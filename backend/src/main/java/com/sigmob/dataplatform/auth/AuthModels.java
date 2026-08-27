@@ -21,7 +21,8 @@ public final class AuthModels {
             String unionId,
             String name,
             String avatarUrl,
-            String tenantKey
+            String tenantKey,
+            String email
     ) implements Serializable {
         @Serial
         private static final long serialVersionUID = 1L;

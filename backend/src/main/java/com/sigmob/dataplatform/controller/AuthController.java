@@ -12,6 +12,7 @@ import com.sigmob.dataplatform.auth.AuthModels;
 import com.sigmob.dataplatform.auth.AuthSession;
 import com.sigmob.dataplatform.auth.FeishuAuthClient;
 import com.sigmob.dataplatform.config.AppProperties;
+import com.sigmob.dataplatform.service.UserAccountService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -37,10 +38,12 @@ public class AuthController {
     private final SecureRandom secureRandom = new SecureRandom();
     private final AppProperties properties;
     private final FeishuAuthClient feishuAuthClient;
+    private final UserAccountService userAccountService;
 
-    public AuthController(AppProperties properties, FeishuAuthClient feishuAuthClient) {
+    public AuthController(AppProperties properties, FeishuAuthClient feishuAuthClient, UserAccountService userAccountService) {
         this.properties = properties;
         this.feishuAuthClient = feishuAuthClient;
+        this.userAccountService = userAccountService;
     }
 
     @GetMapping("/me")
@@ -103,6 +106,15 @@ public class AuthController {
             AuthModels.AuthUser user = feishuAuthClient.authenticate(code, codeVerifier);
             request.changeSessionId();
             clearOAuthState(session);
+
+            log.info("飞书登录成功: openId={}, name={}", user.openId(), user.name());
+
+            try {
+                userAccountService.createOrUpdate(user);
+            } catch (Exception e) {
+                log.error("用户账户创建/更新失败，但登录继续: openId={}, error={}", user.openId(), e.getMessage(), e);
+            }
+
             session.setAttribute(AuthSession.USER_ATTRIBUTE, user);
             response.sendRedirect(properties.auth().frontendUri());
         } catch (RuntimeException exception) {

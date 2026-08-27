@@ -13,6 +13,7 @@ public class FeishuAuthClient {
 
     private static final String TOKEN_URL = "https://accounts.feishu.cn/oauth/v3/token";
     private static final String USER_INFO_URL = "https://open.feishu.cn/open-apis/authen/v1/user_info";
+    private static final String CONTACT_USER_URL = "https://open.feishu.cn/open-apis/contact/v3/users/{user_id}";
 
     private final RestClient restClient;
     private final AppProperties properties;
@@ -35,12 +36,16 @@ public class FeishuAuthClient {
             if (user == null || normalized(user.openId()).isBlank()) {
                 throw new FeishuAuthenticationException("飞书返回的用户信息不完整");
             }
+
+            String email = loadUserEmail(token.accessToken(), user.openId());
+
             return new AuthModels.AuthUser(
                     normalized(user.openId()),
                     normalized(user.unionId()),
                     normalized(user.name()),
                     normalized(user.avatarUrl()),
-                    normalized(user.tenantKey()));
+                    normalized(user.tenantKey()),
+                    normalized(email));
         } catch (RestClientResponseException exception) {
             throw new FeishuAuthenticationException("飞书登录请求失败，HTTP " + exception.getStatusCode().value(), exception);
         }
@@ -85,6 +90,24 @@ public class FeishuAuthClient {
         return response;
     }
 
+    private String loadUserEmail(String accessToken, String openId) {
+        try {
+            ContactUserResponse response = restClient.get()
+                    .uri(CONTACT_USER_URL + "?user_id_type=open_id&fields=email,enterprise_email", openId)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .body(ContactUserResponse.class);
+            if (response == null || response.code() != 0 || response.data() == null || response.data().user() == null) {
+                return "";
+            }
+            ContactUser contactUser = response.data().user();
+            String enterpriseEmail = normalized(contactUser.enterpriseEmail());
+            return enterpriseEmail.isBlank() ? normalized(contactUser.email()) : enterpriseEmail;
+        } catch (RestClientResponseException exception) {
+            return "";
+        }
+    }
+
     private String normalized(String value) {
         return value == null ? "" : value.trim();
     }
@@ -107,6 +130,18 @@ public class FeishuAuthClient {
             @JsonProperty("open_id") String openId,
             @JsonProperty("union_id") String unionId,
             @JsonProperty("tenant_key") String tenantKey
+    ) {
+    }
+
+    record ContactUserResponse(int code, String msg, ContactUserData data) {
+    }
+
+    record ContactUserData(ContactUser user) {
+    }
+
+    record ContactUser(
+            String email,
+            @JsonProperty("enterprise_email") String enterpriseEmail
     ) {
     }
 }
