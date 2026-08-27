@@ -372,13 +372,11 @@ public class SnapshotRepository {
             return new ApiModels.Page<>(List.of(), 0, page, size);
         }
 
-        StringBuilder where = new StringBuilder(" WHERE batch_id = :batchId AND scan_type = 'table'");
+        StringBuilder where = new StringBuilder(" WHERE batch_id = :batchId");
         MapSqlParameterSource parameters = new MapSqlParameterSource("batchId", latest.get().id());
         appendEqualsFilter(where, parameters, "bucket", "bucket", bucket);
         appendEqualsFilter(where, parameters, "db_name", "database", database);
-        if (scanType != null && !scanType.isBlank() && !"table".equalsIgnoreCase(scanType)) {
-            return new ApiModels.Page<>(List.of(), 0, page, size);
-        }
+        appendEqualsFilter(where, parameters, "scan_type", "scanType", scanType);
         appendEqualsFilter(where, parameters, "owner_name", "owner", owner);
         if (keyword != null && !keyword.isBlank()) {
             where.append(" AND (LOWER(table_name) LIKE :keyword OR LOWER(db_name) LIKE :keyword OR LOWER(bucket) LIKE :keyword)");
@@ -402,7 +400,7 @@ public class SnapshotRepository {
                                MAX(mod_time) AS mod_time,
                                MAX(access_time) AS access_time,
                                MAX(owner_name) AS owner_name,
-                               'table' AS scan_type,
+                               MAX(scan_type) AS scan_type,
                                MAX(collect_host) AS collect_host,
                                MAX(collect_time) AS collect_time
                         FROM asset_snapshot

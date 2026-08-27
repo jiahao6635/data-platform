@@ -77,7 +77,7 @@ const tableTrendLoading = ref(false)
 const assetQuery = reactive<AssetQuery>({
   page: 0,
   size: 20,
-  scanType: 'table',
+  scanType: '',
   sort: 'sizeBytes',
   direction: 'desc',
 })
@@ -427,7 +427,7 @@ function resetFilters() {
   Object.assign(assetQuery, {
     bucket: undefined,
     database: undefined,
-    scanType: 'table',
+    scanType: '',
     owner: undefined,
     keyword: undefined,
     page: 0,
@@ -722,6 +722,9 @@ onMounted(initialize)
             <el-select v-model="assetQuery.database" clearable filterable placeholder="全部数据库" @change="assetQuery.page = 0; loadAssets()">
               <el-option v-for="item in filters.databases" :key="item" :label="item" :value="item" />
             </el-select>
+            <el-select v-model="assetQuery.scanType" clearable placeholder="全部类型" @change="assetQuery.page = 0; loadAssets()">
+              <el-option v-for="item in filters.scanTypes" :key="item" :label="item" :value="item" />
+            </el-select>
             <el-select v-model="assetQuery.owner" clearable filterable placeholder="全部所有者" @change="assetQuery.page = 0; loadAssets()">
               <el-option v-for="item in filters.owners" :key="item" :label="item" :value="item" />
             </el-select>
@@ -743,6 +746,11 @@ onMounted(initialize)
             </el-table-column>
             <el-table-column prop="table" label="表 / 目录" min-width="260" show-overflow-tooltip>
               <template #default="scope"><span class="table-name">{{ scope.row.table || `${scope.row.scanType} 目录` }}</span></template>
+            </el-table-column>
+            <el-table-column prop="scanType" label="类型" width="80">
+              <template #default="scope">
+                <span class="type-badge" :class="scope.row.scanType">{{ scope.row.scanType }}</span>
+              </template>
             </el-table-column>
             <el-table-column prop="partitionCount" label="分区" width="128" sortable="custom">
               <template #default="scope">
