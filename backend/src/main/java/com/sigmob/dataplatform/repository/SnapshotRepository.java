@@ -308,13 +308,21 @@ public class SnapshotRepository {
                         resultSet.getLong("table_count")), latest.get().id(), limit);
     }
 
-    public List<ApiModels.TrendPoint> loadTrend(String bucket, int days) {
+    public List<ApiModels.TrendPoint> loadTrend(String bucket, String database, String table, int days) {
         Instant from = Instant.now().minusSeconds(days * 86_400L);
         MapSqlParameterSource parameters = new MapSqlParameterSource("from", OffsetDateTime.ofInstant(from, ZoneOffset.UTC));
-        String bucketFilter = "";
+        StringBuilder filter = new StringBuilder();
         if (bucket != null && !bucket.isBlank()) {
-            bucketFilter = " AND a.bucket = :bucket";
+            filter.append(" AND a.bucket = :bucket");
             parameters.addValue("bucket", bucket.trim());
+        }
+        if (database != null && !database.isBlank()) {
+            filter.append(" AND a.db_name = :database");
+            parameters.addValue("database", database.trim());
+        }
+        if (table != null && !table.isBlank()) {
+            filter.append(" AND a.table_name = :table");
+            parameters.addValue("table", table.trim());
         }
 
         List<RawTrend> raw = namedJdbcTemplate.query("""
@@ -324,7 +332,7 @@ public class SnapshotRepository {
                 FROM snapshot_batch b
                 JOIN asset_snapshot a ON a.batch_id = b.id AND a.scan_type = 'table'
                 WHERE b.status = 'PUBLISHED' AND b.snapshot_at >= :from
-                """ + bucketFilter + """
+                """ + filter + """
                 GROUP BY b.id, b.snapshot_at
                 ORDER BY b.snapshot_at
                 """, parameters, (resultSet, rowNum) -> new RawTrend(

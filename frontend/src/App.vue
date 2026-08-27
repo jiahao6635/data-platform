@@ -69,6 +69,11 @@ const partitionTotal = ref(0)
 const partitionPage = ref(0)
 const partitionLoading = ref(false)
 
+const trendDrawer = ref(false)
+const trendAsset = ref<AssetItem | null>(null)
+const tableTrend = ref<TrendPoint[]>([])
+const tableTrendLoading = ref(false)
+
 const assetQuery = reactive<AssetQuery>({
   page: 0,
   size: 20,
@@ -261,6 +266,68 @@ const topTablesOption = computed<EChartsOption>(() => {
   }
 })
 
+const tableTrendOption = computed<EChartsOption>(() => ({
+  animationDuration: 650,
+  color: ['#44d7d2'],
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: 'rgba(8, 19, 34, .96)',
+    borderColor: '#203a52',
+    textStyle: { color: '#d9e9f5' },
+    formatter: (params: unknown) => {
+      const rows = params as Array<{ axisValue: string; marker: string; seriesName: string; value: number }>
+      if (!rows.length) return ''
+      return [
+        `<strong>${rows[0].axisValue}</strong>`,
+        ...rows.map((row) => `${row.marker}${row.seriesName}　${formatBytes(row.value)}`),
+      ].join('<br/>')
+    },
+  },
+  grid: { left: 8, right: 12, top: 36, bottom: 8, containLabel: true },
+  xAxis: {
+    type: 'category',
+    boundaryGap: false,
+    data: tableTrend.value.map((item) => item.date.slice(5)),
+    axisLine: { lineStyle: { color: '#24374a' } },
+    axisLabel: { color: '#70899e' },
+    axisTick: { show: false },
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: { color: '#70899e', formatter: (value: number) => formatBytes(value, 0) },
+    splitLine: { lineStyle: { color: 'rgba(58, 83, 105, .24)', type: 'dashed' } },
+  },
+  series: [
+    {
+      name: '容量',
+      type: 'line',
+      smooth: true,
+      showSymbol: tableTrend.value.length < 8,
+      symbolSize: 8,
+      lineStyle: { width: 3 },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(68, 215, 210, .30)' },
+            { offset: 1, color: 'rgba(68, 215, 210, .01)' },
+          ],
+        },
+      },
+      data: tableTrend.value.map((item) => item.totalSizeBytes),
+    },
+  ],
+}))
+
+const growthDelta = computed(() => {
+  if (tableTrend.value.length < 2) return 0
+  return tableTrend.value[tableTrend.value.length - 1].totalSizeBytes - tableTrend.value[0].totalSizeBytes
+})
+
 async function refreshDashboard() {
   loading.value = true
   apiError.value = ''
@@ -309,6 +376,25 @@ async function openPartitions(asset: AssetItem) {
   partitionPage.value = 0
   partitionDrawer.value = true
   await loadPartitions()
+}
+
+async function openTableTrend(asset: AssetItem) {
+  trendAsset.value = asset
+  trendDrawer.value = true
+  await loadTableTrend()
+}
+
+async function loadTableTrend() {
+  if (!trendAsset.value) return
+  tableTrendLoading.value = true
+  try {
+    const asset = trendAsset.value
+    tableTrend.value = await api.trend(90, asset.bucket, asset.database, asset.table)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '表趋势加载失败')
+  } finally {
+    tableTrendLoading.value = false
+  }
 }
 
 async function loadPartitions() {
@@ -677,6 +763,11 @@ onMounted(initialize)
               <template #default="scope"><span :class="{ muted: !scope.row.accessTime }">{{ formatDateTime(scope.row.accessTime) }}</span></template>
             </el-table-column>
             <el-table-column prop="collectHost" label="采集 Host" min-width="210" show-overflow-tooltip />
+            <el-table-column label="操作" width="72" fixed="right">
+              <template #default="scope">
+                <button class="trend-link" @click="openTableTrend(scope.row)">趋势 ▸</button>
+              </template>
+            </el-table-column>
           </el-table>
 
           <div class="pagination-row">
@@ -771,6 +862,42 @@ onMounted(initialize)
           background
           @current-change="(page: number) => { partitionPage = page - 1; loadPartitions() }"
         />
+      </div>
+    </el-drawer>
+
+    <el-drawer
+      v-model="trendDrawer"
+      size="680px"
+      direction="rtl"
+      class="trend-drawer"
+      destroy-on-close
+    >
+      <template #header>
+        <div class="drawer-title">
+          <span>TABLE TREND</span>
+          <h3>{{ trendAsset?.database }}.{{ trendAsset?.table }}</h3>
+          <p>{{ trendAsset?.bucket }} · {{ formatBytes(trendAsset?.sizeBytes ?? 0) }} · 近 90 天</p>
+        </div>
+      </template>
+      <div v-loading="tableTrendLoading" class="trend-drawer-body">
+        <div v-if="tableTrend.length < 2 && !tableTrendLoading" class="single-snapshot-note" style="margin: 0 0 16px;">
+          <span>●</span> 当前只有 {{ tableTrend.length }} 个日快照；持续采集后将自动形成增长曲线
+        </div>
+        <div class="trend-summary" v-if="tableTrend.length >= 2">
+          <div class="trend-summary-item">
+            <span>起始容量</span>
+            <strong>{{ formatBytes(tableTrend[0].totalSizeBytes) }}</strong>
+          </div>
+          <div class="trend-summary-item">
+            <span>最新容量</span>
+            <strong>{{ formatBytes(tableTrend[tableTrend.length - 1].totalSizeBytes) }}</strong>
+          </div>
+          <div class="trend-summary-item">
+            <span>增长量</span>
+            <strong :class="{ negative: growthDelta < 0 }">{{ growthDelta >= 0 ? '+' : '' }}{{ formatBytes(growthDelta) }}</strong>
+          </div>
+        </div>
+        <EChart :option="tableTrendOption" height="calc(100vh - 260px)" />
       </div>
     </el-drawer>
   </div>

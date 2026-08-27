@@ -31,9 +31,9 @@ public class DashboardService {
         return repository.loadOwnerMetrics(boundedLimit(limit));
     }
 
-    public List<ApiModels.TrendPoint> trend(String bucket, int days) {
+    public List<ApiModels.TrendPoint> trend(String bucket, String database, String table, int days) {
         int boundedDays = Math.max(1, Math.min(days, 3650));
-        return repository.loadTrend(bucket, boundedDays);
+        return repository.loadTrend(bucket, database, table, boundedDays);
     }
 
     public ApiModels.Page<ApiModels.AssetItem> assets(

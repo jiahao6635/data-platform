@@ -43,8 +43,8 @@ export const api = {
   buckets: () => request<BucketMetric[]>('/dashboard/buckets'),
   topTables: (limit = 10) => request<TopTable[]>(`/dashboard/top-tables?limit=${limit}`),
   owners: (limit = 8) => request<OwnerMetric[]>(`/dashboard/owners?limit=${limit}`),
-  trend: (days = 30, bucket?: string) =>
-    request<TrendPoint[]>(`/dashboard/trend${queryString({ days, bucket })}`),
+  trend: (days = 30, bucket?: string, database?: string, table?: string) =>
+    request<TrendPoint[]>(`/dashboard/trend${queryString({ days, bucket, database, table })}`),
   assets: (query: AssetQuery) =>
     request<Page<AssetItem>>(`/assets${queryString({ ...query })}`),
   filters: () => request<FilterOptions>('/assets/filters'),

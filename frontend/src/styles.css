@@ -279,6 +279,14 @@ nav { display: grid; gap: 7px; }
 .snapshot-panel { min-height: calc(100vh - 136px); overflow: hidden; }.empty-state { display: grid; place-items: center; padding: 80px 20px; color: #698498; }.empty-state strong { color: #a7bdcb; }.empty-state p { margin: 8px 0; font-size: 10px; }
 .partition-link { padding: 3px 0; border: 0; background: transparent; color: #51d1cd; font-size: 9px; cursor: pointer; }.partition-link:hover { color: #a1fffb; }.unpartitioned { color: #536f83; font-size: 9px; }.partition-name { color: #77d5d1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .partition-drawer { --el-drawer-bg-color: #0b1928; border-left: 1px solid #20384b; }.partition-drawer .el-drawer__header { min-height: 104px; padding: 20px 24px; margin: 0; border-bottom: 1px solid var(--line); }.partition-drawer .el-drawer__body { padding: 0; }.partition-drawer .el-drawer__close-btn { color: #7b96aa; }.drawer-title span { font-size: 8px; letter-spacing: 1.8px; color: #4d7088; }.drawer-title h3 { margin: 5px 0 4px; font-size: 16px; color: #e2f5fc; }.drawer-title p { margin: 0; font-size: 9px; color: #668398; }.drawer-pagination { background: #0c1b2a; }
+.trend-link { padding: 3px 0; border: 0; background: transparent; color: #5b8ff9; font-size: 9px; cursor: pointer; }.trend-link:hover { color: #9fbaff; }
+.trend-drawer { --el-drawer-bg-color: #0b1928; border-left: 1px solid #20384b; }.trend-drawer .el-drawer__header { min-height: 104px; padding: 20px 24px; margin: 0; border-bottom: 1px solid var(--line); }.trend-drawer .el-drawer__body { padding: 0; }.trend-drawer .el-drawer__close-btn { color: #7b96aa; }
+.trend-drawer-body { padding: 20px 24px; }
+.trend-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.trend-summary-item { padding: 14px 16px; border: 1px solid var(--line); border-radius: 7px; background: rgba(13, 27, 42, .94); display: flex; flex-direction: column; gap: 6px; }
+.trend-summary-item span { font-size: 8px; letter-spacing: 1.2px; color: #58768c; }
+.trend-summary-item strong { font-size: 16px; font-weight: 600; color: #dcebf5; }
+.trend-summary-item strong.negative { color: #e86f91; }
 .echart { width: 100%; }
 
 .el-loading-mask { background-color: rgba(7, 17, 31, .65) !important; }.el-loading-spinner .path { stroke: var(--cyan) !important; }

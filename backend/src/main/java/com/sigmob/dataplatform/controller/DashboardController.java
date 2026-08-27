@@ -42,9 +42,11 @@ public class DashboardController {
     @GetMapping("/dashboard/trend")
     public List<ApiModels.TrendPoint> trend(
             @RequestParam(required = false) String bucket,
+            @RequestParam(required = false) String database,
+            @RequestParam(required = false) String table,
             @RequestParam(defaultValue = "30") int days
     ) {
-        return dashboardService.trend(bucket, days);
+        return dashboardService.trend(bucket, database, table, days);
     }
 
     @GetMapping("/assets")
