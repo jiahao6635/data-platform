@@ -24,7 +24,7 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:10.26.18.72:9092,10.26.18.73:9092,10.26.18.74:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:10.26.84.144:9092,10.26.84.142:9092,10.26.84.143:9092}
     consumer:
       group-id: ${KAFKA_GROUP_ID:data-platform-metadata}
       auto-offset-reset: latest
