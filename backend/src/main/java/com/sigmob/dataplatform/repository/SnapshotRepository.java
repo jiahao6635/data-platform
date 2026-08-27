@@ -332,10 +332,10 @@ public class SnapshotRepository {
                 FROM snapshot_batch b
                 JOIN asset_snapshot a ON a.batch_id = b.id AND a.scan_type = 'table'
                 WHERE b.status = 'PUBLISHED' AND b.snapshot_at >= :from
-                """ + filter + """
-                GROUP BY b.id, b.snapshot_at
-                ORDER BY b.snapshot_at
-                """, parameters, (resultSet, rowNum) -> new RawTrend(
+                """ + filter + "\n"
+                + "GROUP BY b.id, b.snapshot_at\n"
+                + "ORDER BY b.snapshot_at"
+                , parameters, (resultSet, rowNum) -> new RawTrend(
                         resultSet.getObject("snapshot_at", OffsetDateTime.class),
                         resultSet.getLong("total_size_bytes"),
                         resultSet.getLong("table_count")));

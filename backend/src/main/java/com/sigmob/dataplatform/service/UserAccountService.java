@@ -1,8 +1,9 @@
 package com.sigmob.dataplatform.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sigmob.dataplatform.auth.AuthModels;
 import com.sigmob.dataplatform.entity.UserAccount;
-import com.sigmob.dataplatform.repository.UserAccountRepository;
+import com.sigmob.dataplatform.mapper.UserAccountMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,18 +14,17 @@ public class UserAccountService {
 
     private static final Logger log = LoggerFactory.getLogger(UserAccountService.class);
 
-    private final UserAccountRepository userAccountRepository;
+    private final UserAccountMapper userAccountMapper;
 
-    public UserAccountService(UserAccountRepository userAccountRepository) {
-        this.userAccountRepository = userAccountRepository;
+    public UserAccountService(UserAccountMapper userAccountMapper) {
+        this.userAccountMapper = userAccountMapper;
     }
 
     @Transactional
     public UserAccount createOrUpdate(AuthModels.AuthUser authUser) {
         String userId = authUser.openId();
 
-        UserAccount account = userAccountRepository.findById(userId)
-                .orElse(null);
+        UserAccount account = userAccountMapper.selectById(userId);
 
         if (account == null) {
             log.info("Creating new user account: openId={}, name={}", userId, authUser.name());
@@ -33,16 +33,17 @@ public class UserAccountService {
             account.setDisplayName(authUser.name());
             account.setEmail(authUser.email());
             account.setAvatarUrl(authUser.avatarUrl());
+            userAccountMapper.insert(account);
         } else {
             log.info("Updating existing user account: openId={}, name={}", userId, authUser.name());
             account.setDisplayName(authUser.name());
             account.setEmail(authUser.email());
             account.setAvatarUrl(authUser.avatarUrl());
+            userAccountMapper.updateById(account);
         }
 
-        UserAccount saved = userAccountRepository.save(account);
-        log.debug("User account saved: id={}", saved.getId());
+        log.debug("User account saved: id={}", account.getId());
 
-        return saved;
+        return account;
     }
 }

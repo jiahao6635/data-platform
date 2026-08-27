@@ -1,52 +1,37 @@
 package com.sigmob.dataplatform.entity;
 
-import jakarta.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
 import java.time.OffsetDateTime;
 
-@Entity
-@Table(name = "user_account")
+@TableName("user_account")
 public class UserAccount {
 
-    @Id
-    @Column(length = 128)
+    @TableId(type = IdType.INPUT)
     private String id;
 
-    @Column(name = "display_name", length = 255, nullable = false)
+    @TableField("display_name")
     private String displayName;
 
-    @Column(length = 255)
     private String email;
 
-    @Column(name = "avatar_url", length = 1024)
+    @TableField("avatar_url")
     private String avatarUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @EnumValue
     private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "system_account", nullable = false)
+    @TableField("system_account")
     private Boolean systemAccount = false;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @TableField(value = "created_at", fill = FieldFill.INSERT)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private OffsetDateTime updatedAt;
 
     public enum UserStatus {
         ACTIVE,
         INACTIVE
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
     }
 
     public String getId() {
