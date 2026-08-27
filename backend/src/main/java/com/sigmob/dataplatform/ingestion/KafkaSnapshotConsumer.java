@@ -2,6 +2,7 @@ package com.sigmob.dataplatform.ingestion;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.sigmob.dataplatform.config.AppProperties;
 import com.sigmob.dataplatform.repository.SnapshotRepository;
@@ -23,6 +24,7 @@ public class KafkaSnapshotConsumer {
     private final OssDataParser parser;
     private final SnapshotRepository repository;
     private final AppProperties properties;
+    private final AtomicLong consumedRecordCount = new AtomicLong();
 
     private UUID activeBatchId;
 
@@ -34,6 +36,7 @@ public class KafkaSnapshotConsumer {
         this.parser = parser;
         this.repository = repository;
         this.properties = properties;
+        log.info("Kafka 消费者已启动: topic={}", properties.kafka().topic());
     }
 
     @KafkaListener(topics = "${app.kafka.topic}")
@@ -52,6 +55,7 @@ public class KafkaSnapshotConsumer {
             UUID batchId = activeBatch();
             repository.insertRecord(batchId, record);
         }
+        consumedRecordCount.incrementAndGet();
     }
 
     @Scheduled(fixedDelayString = "${app.kafka.finalize-check-delay-ms:5000}")
@@ -67,6 +71,12 @@ public class KafkaSnapshotConsumer {
             OffsetDateTime quietBefore = OffsetDateTime.now().minus(properties.kafka().quietPeriod());
             if (batch.get().lastReceivedAt().isAfter(quietBefore)) {
                 activeBatchId = batch.get().id();
+                log.info(
+                        "Kafka 消费进行中: topic={}, batchId={}, 已处理消息数={}, 最近收到时间={}",
+                        properties.kafka().topic(),
+                        batch.get().id(),
+                        consumedRecordCount.get(),
+                        batch.get().lastReceivedAt());
                 return;
             }
 
@@ -90,4 +100,3 @@ public class KafkaSnapshotConsumer {
         return activeBatchId;
     }
 }
-
