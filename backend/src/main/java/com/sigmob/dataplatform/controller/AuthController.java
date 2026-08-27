@@ -1,8 +1,6 @@
 package com.sigmob.dataplatform.controller;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -67,11 +65,12 @@ public class AuthController {
         String location = UriComponentsBuilder.fromUriString(AUTHORIZE_URL)
                 .queryParam("client_id", settings.clientId())
                 .queryParam("response_type", "code")
-                .queryParam("redirect_uri", URLEncoder.encode(settings.redirectUri(), StandardCharsets.UTF_8))
+                .queryParam("redirect_uri", settings.redirectUri())
                 .queryParam("state", state)
                 .queryParam("code_challenge", sha256UrlSafe(codeVerifier))
                 .queryParam("code_challenge_method", "S256")
-                .build(true)
+                .build()
+                .encode()
                 .toUriString();
 
         return ResponseEntity.status(HttpStatus.FOUND)

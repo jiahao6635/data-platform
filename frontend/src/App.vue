@@ -454,12 +454,27 @@ onMounted(initialize)
       <span class="auth-kicker">SIGMOB · DATA OS</span>
       <h1>登录 DataScope</h1>
       <p>使用公司飞书账号验证身份后，进入数据资产看板。</p>
-      <div v-if="authError" class="auth-error">{{ authError }}</div>
+      <div v-if="authError" class="auth-error">
+        <div class="auth-error-icon">⚠</div>
+        <div class="auth-error-content">
+          <strong>飞书身份验证失败</strong>
+          <span>{{ authError }}</span>
+        </div>
+      </div>
       <div v-if="!authStatus.configured" class="auth-error">
-        飞书应用参数尚未配置，请联系管理员设置 App ID、App Secret 和回调地址。
+        <div class="auth-error-icon">⚠</div>
+        <div class="auth-error-content">
+          <strong>飞书身份验证失败</strong>
+          <span>飞书应用参数尚未配置，请联系管理员设置 App ID、App Secret 和回调地址。</span>
+        </div>
       </div>
       <button class="feishu-login-button" :disabled="!authStatus.configured" @click="startFeishuLogin">
-        <span class="feishu-logo">飞</span>
+        <span class="feishu-logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 24L16 8L24 24H8Z" fill="currentColor" opacity="0.9"/>
+            <path d="M12 20L16 12L20 20H12Z" fill="currentColor"/>
+          </svg>
+        </span>
         使用飞书登录
         <i>→</i>
       </button>
