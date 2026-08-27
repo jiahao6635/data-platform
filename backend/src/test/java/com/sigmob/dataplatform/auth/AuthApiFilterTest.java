@@ -32,7 +32,7 @@ class AuthApiFilterTest {
         var filter = new AuthApiFilter(properties(true), new ObjectMapper().findAndRegisterModules());
         var request = new MockHttpServletRequest("GET", "/api/v1/dashboard/summary");
         request.getSession().setAttribute(AuthSession.USER_ATTRIBUTE,
-                new AuthModels.AuthUser("ou_test", "on_test", "测试用户", "", "tenant"));
+                new AuthModels.AuthUser("ou_test", "on_test", "测试用户", "", "tenant", ""));
         var response = new MockHttpServletResponse();
         var called = new AtomicBoolean();
 

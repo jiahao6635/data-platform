@@ -33,12 +33,18 @@ class FeishuAuthClientTest {
                         {"code":0,"msg":"success","data":{"name":"张三","avatar_url":"https://example/avatar.png",\
                         "open_id":"ou_test","union_id":"on_test","tenant_key":"tenant_test"}}
                         """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://open.feishu.cn/open-apis/contact/v3/users/ou_test?user_id_type=open_id&fields=email,enterprise_email"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"code":0,"msg":"success","data":{"user":{"email":"user@example.com","enterprise_email":"enterprise@example.com"}}}
+                        """, MediaType.APPLICATION_JSON));
 
         AuthModels.AuthUser user = client.authenticate("oauth-code", "pkce-verifier");
 
         assertThat(user.name()).isEqualTo("张三");
         assertThat(user.openId()).isEqualTo("ou_test");
         assertThat(user.tenantKey()).isEqualTo("tenant_test");
+        assertThat(user.email()).isEqualTo("enterprise@example.com");
         server.verify();
     }
 

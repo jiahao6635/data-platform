@@ -10,17 +10,20 @@ import com.sigmob.dataplatform.auth.AuthModels;
 import com.sigmob.dataplatform.auth.AuthSession;
 import com.sigmob.dataplatform.auth.FeishuAuthClient;
 import com.sigmob.dataplatform.config.AppProperties;
+import com.sigmob.dataplatform.service.UserAccountService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.util.UriComponentsBuilder;
 
 class AuthControllerTest {
 
     @Test
     void createsPkceLoginAndStoresAuthenticatedUserInSession() throws Exception {
         FeishuAuthClient client = mock(FeishuAuthClient.class);
-        var controller = new AuthController(properties(), client);
+        UserAccountService userAccountService = mock(UserAccountService.class);
+        var controller = new AuthController(properties(), client, userAccountService);
         var request = new MockHttpServletRequest("GET", "/api/v1/auth/login");
 
         var login = controller.login(request);
@@ -31,15 +34,19 @@ class AuthControllerTest {
                 .startsWith("https://accounts.feishu.cn/open-apis/authen/v1/authorize?")
                 .contains("client_id=cli_test")
                 .contains("response_type=code")
-                .contains("code_challenge_method=S256")
-                .contains("redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fapi%2Fv1%2Fauth%2Fcallback");
+                .contains("code_challenge_method=S256");
+        assertThat(UriComponentsBuilder.fromUri(login.getHeaders().getLocation())
+                .build()
+                .getQueryParams()
+                .getFirst("redirect_uri"))
+                .isEqualTo("http://localhost:5173/api/v1/auth/callback");
 
         String state = (String) request.getSession().getAttribute(AuthSession.OAUTH_STATE_ATTRIBUTE);
         String verifier = (String) request.getSession().getAttribute(AuthSession.PKCE_VERIFIER_ATTRIBUTE);
         assertThat(state).isNotBlank();
         assertThat(verifier).hasSizeGreaterThanOrEqualTo(43);
 
-        var user = new AuthModels.AuthUser("ou_test", "on_test", "张三", "", "tenant");
+        var user = new AuthModels.AuthUser("ou_test", "on_test", "张三", "", "tenant", "");
         when(client.authenticate("oauth-code", verifier)).thenReturn(user);
         var response = new MockHttpServletResponse();
 
