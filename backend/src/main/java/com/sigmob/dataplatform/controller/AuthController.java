@@ -57,11 +57,17 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        String state = randomUrlSafe(32);
-        String codeVerifier = randomUrlSafe(64);
         HttpSession session = request.getSession(true);
-        session.setAttribute(AuthSession.OAUTH_STATE_ATTRIBUTE, state);
-        session.setAttribute(AuthSession.PKCE_VERIFIER_ATTRIBUTE, codeVerifier);
+        // 幂等登录：会话中已有未完成的授权流程时复用同一对 state/code_verifier，
+        // 避免多标签页或重复点击导致授权页的 code_challenge 与回调时的 verifier 不匹配（飞书 20049）。
+        String state = sessionValue(session, AuthSession.OAUTH_STATE_ATTRIBUTE);
+        String codeVerifier = sessionValue(session, AuthSession.PKCE_VERIFIER_ATTRIBUTE);
+        if (state.isBlank() || codeVerifier.isBlank()) {
+            state = randomUrlSafe(32);
+            codeVerifier = randomUrlSafe(64);
+            session.setAttribute(AuthSession.OAUTH_STATE_ATTRIBUTE, state);
+            session.setAttribute(AuthSession.PKCE_VERIFIER_ATTRIBUTE, codeVerifier);
+        }
 
         String location = UriComponentsBuilder.fromUriString(AUTHORIZE_URL)
                 .queryParam("client_id", settings.clientId())
