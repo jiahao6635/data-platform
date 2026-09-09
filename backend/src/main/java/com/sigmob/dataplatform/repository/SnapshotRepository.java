@@ -105,9 +105,9 @@ public class SnapshotRepository {
         int inserted = jdbcTemplate.update("""
                 INSERT INTO asset_snapshot (
                     batch_id, table_key, asset_key, row_hash, bucket, db_name, table_name, partition_name,
-                    size_bytes, mod_time, access_time, owner_name, scan_type,
+                    size_bytes, file_count, mod_time, access_time, owner_name, scan_type,
                     collect_host, collect_time
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (batch_id, row_hash) DO NOTHING
                 """,
                 batchId,
@@ -119,6 +119,7 @@ public class SnapshotRepository {
                 record.table(),
                 record.partition(),
                 record.sizeBytes(),
+                record.fileCount(),
                 record.modTime(),
                 record.accessTime(),
                 record.owner(),
@@ -397,6 +398,8 @@ public class SnapshotRepository {
                         SELECT table_key, bucket, db_name, table_name,
                                SUM(size_bytes) AS size_bytes,
                                COUNT(*) FILTER (WHERE partition_name <> '') AS partition_count,
+                               SUM(file_count) AS file_count,
+                               SUM(size_bytes) / NULLIF(SUM(file_count), 0) AS avg_file_size,
                                MAX(mod_time) AS mod_time,
                                MAX(access_time) AS access_time,
                                MAX(owner_name) AS owner_name,
@@ -414,6 +417,8 @@ public class SnapshotRepository {
                         resultSet.getString("table_name"),
                         resultSet.getLong("size_bytes"),
                         resultSet.getLong("partition_count"),
+                        resultSet.getLong("file_count"),
+                        resultSet.getLong("avg_file_size"),
                         resultSet.getObject("mod_time", LocalDateTime.class),
                         resultSet.getObject("access_time", LocalDateTime.class),
                         resultSet.getString("owner_name"),

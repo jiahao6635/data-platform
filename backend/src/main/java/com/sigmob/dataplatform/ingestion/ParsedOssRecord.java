@@ -9,6 +9,7 @@ public record ParsedOssRecord(
         String table,
         String partition,
         long sizeBytes,
+        int fileCount,
         LocalDateTime modTime,
         LocalDateTime accessTime,
         String owner,

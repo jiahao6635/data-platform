@@ -65,6 +65,8 @@ export interface AssetItem {
   table: string
   sizeBytes: number
   partitionCount: number
+  fileCount: number
+  avgFileSize: number
   modTime: string
   accessTime: string | null
   owner: string

@@ -779,6 +779,12 @@ onMounted(initialize)
                 <span v-else class="unpartitioned">非分区表</span>
               </template>
             </el-table-column>
+            <el-table-column prop="fileCount" label="文件数" width="110" sortable="custom" align="right">
+              <template #default="scope">{{ formatNumber(scope.row.fileCount) }}</template>
+            </el-table-column>
+            <el-table-column prop="avgFileSize" label="平均文件大小" width="145" sortable="custom" align="right">
+              <template #default="scope"><b class="size-value">{{ formatBytes(scope.row.avgFileSize) }}</b></template>
+            </el-table-column>
             <el-table-column prop="sizeBytes" label="当前容量" width="145" sortable="custom" align="right">
               <template #default="scope"><b class="size-value">{{ formatBytes(scope.row.sizeBytes) }}</b></template>
             </el-table-column>

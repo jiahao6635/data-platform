@@ -8,6 +8,7 @@ public record OssDataRecord(
         String table,
         String partition,
         @JsonProperty("size_bytes") Long sizeBytes,
+        @JsonProperty("file_count") Long fileCount,
         @JsonProperty("mod_time") String modTime,
         @JsonProperty("access_time") String accessTime,
         String owner,

@@ -53,6 +53,7 @@ public class OssDataParser {
         if (raw.sizeBytes() == null || raw.sizeBytes() < 0) {
             throw new InvalidOssDataException("size_bytes 必须是大于等于 0 的整数");
         }
+        int fileCount = raw.fileCount() == null || raw.fileCount() < 1 ? 1 : raw.fileCount().intValue();
 
         LocalDateTime modTime = parseLocalTime(required(raw.modTime(), "mod_time"), "mod_time");
         LocalDateTime accessTime = raw.accessTime() == null || raw.accessTime().isBlank()
@@ -72,6 +73,7 @@ public class OssDataParser {
                 table,
                 partition,
                 Long.toString(raw.sizeBytes()),
+                Integer.toString(fileCount),
                 modTime.toString(),
                 accessTime == null ? "" : accessTime.toString(),
                 owner,
@@ -85,6 +87,7 @@ public class OssDataParser {
                 table,
                 partition,
                 raw.sizeBytes(),
+                fileCount,
                 modTime,
                 accessTime,
                 owner,

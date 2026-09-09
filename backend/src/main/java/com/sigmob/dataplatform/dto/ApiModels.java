@@ -54,6 +54,8 @@ public final class ApiModels {
             String table,
             long sizeBytes,
             long partitionCount,
+            long fileCount,
+            long avgFileSize,
             LocalDateTime modTime,
             LocalDateTime accessTime,
             String owner,

@@ -30,6 +30,7 @@ class OssDataParserTest {
         assertThat(record.table()).isEqualTo("dmp_wide_table_for_dsp_online");
         assertThat(record.partition()).isEmpty();
         assertThat(record.sizeBytes()).isEqualTo(7_855_590_992L);
+        assertThat(record.fileCount()).isEqualTo(1); // 未提供 file_count 时默认为 1
         assertThat(record.accessTime()).isNull();
         assertThat(record.assetKey()).hasSize(64);
         assertThat(record.rowHash()).hasSize(64);
@@ -53,6 +54,20 @@ class OssDataParserTest {
         assertThat(first.partition()).isEqualTo("ds=2025-08-19");
         assertThat(first.tableKey()).isEqualTo(second.tableKey());
         assertThat(first.assetKey()).isNotEqualTo(second.assetKey());
+    }
+
+    @Test
+    void parsesFileCountField() {
+        var record = parser.parse("""
+                {"bucket":"sig-warehouse","db":"anticheat","table":"anticheat_base_data8",\
+                "partition":"ds=2026-08-02","size_bytes":15265766222,"file_count":49,\
+                "mod_time":"2026-08-03 08:09:00","access_time":"","owner":"bi_airflow",\
+                "scan_type":"table","collect_host":"task-5-1.c-43285eced70fb121",\
+                "collect_time":"2026-09-08T20:19:02+08:00"}
+                """);
+
+        assertThat(record.fileCount()).isEqualTo(49);
+        assertThat(record.sizeBytes()).isEqualTo(15_265_766_222L);
     }
 
     @Test
