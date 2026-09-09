@@ -311,35 +311,18 @@ public class SnapshotRepository {
 
     public List<ApiModels.TrendPoint> loadTrend(String bucket, String database, String table, int days) {
         Instant from = Instant.now().minusSeconds(days * 86_400L);
-        MapSqlParameterSource parameters = new MapSqlParameterSource("from", OffsetDateTime.ofInstant(from, ZoneOffset.UTC));
-        StringBuilder filter = new StringBuilder();
-        if (bucket != null && !bucket.isBlank()) {
-            filter.append(" AND a.bucket = :bucket");
-            parameters.addValue("bucket", bucket.trim());
-        }
-        if (database != null && !database.isBlank()) {
-            filter.append(" AND a.db_name = :database");
-            parameters.addValue("database", database.trim());
-        }
-        if (table != null && !table.isBlank()) {
-            filter.append(" AND a.table_name = :table");
-            parameters.addValue("table", table.trim());
-        }
+        OffsetDateTime fromTime = OffsetDateTime.ofInstant(from, ZoneOffset.UTC);
 
-        List<RawTrend> raw = namedJdbcTemplate.query("""
-                SELECT b.snapshot_at,
-                       COALESCE(SUM(a.size_bytes), 0) AS total_size_bytes,
-                       COUNT(DISTINCT a.table_key) AS table_count
-                FROM snapshot_batch b
-                JOIN asset_snapshot a ON a.batch_id = b.id AND a.scan_type = 'table'
-                WHERE b.status = 'PUBLISHED' AND b.snapshot_at >= :from
-                """ + filter + "\n"
-                + "GROUP BY b.id, b.snapshot_at\n"
-                + "ORDER BY b.snapshot_at"
-                , parameters, (resultSet, rowNum) -> new RawTrend(
-                        resultSet.getObject("snapshot_at", OffsetDateTime.class),
-                        resultSet.getLong("total_size_bytes"),
-                        resultSet.getLong("table_count")));
+        boolean hasFilter = (bucket != null && !bucket.isBlank())
+                || (database != null && !database.isBlank())
+                || (table != null && !table.isBlank());
+
+        List<RawTrend> raw;
+        if (hasFilter) {
+            raw = loadTrendWithFilter(bucket, database, table, fromTime);
+        } else {
+            raw = loadTrendFromBatch(fromTime);
+        }
 
         TreeMap<LocalDate, RawTrend> latestPerDay = new TreeMap<>();
         for (RawTrend point : raw) {
@@ -355,6 +338,62 @@ public class SnapshotRepository {
             previous = point.totalSizeBytes();
         }
         return result;
+    }
+
+    /**
+     * 无过滤条件时直接从 snapshot_batch 读取预聚合数据，避免 JOIN asset_snapshot。
+     * snapshot_batch 在 publishBatch 时已计算好 total_table_size_bytes 和 table_count。
+     */
+    private List<RawTrend> loadTrendFromBatch(OffsetDateTime fromTime) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource("from", fromTime);
+        return namedJdbcTemplate.query("""
+                SELECT snapshot_at,
+                       total_table_size_bytes,
+                       table_count
+                FROM snapshot_batch
+                WHERE status = 'PUBLISHED' AND snapshot_at >= :from
+                ORDER BY snapshot_at
+                """, parameters, (resultSet, rowNum) -> new RawTrend(
+                        resultSet.getObject("snapshot_at", OffsetDateTime.class),
+                        resultSet.getLong("total_table_size_bytes"),
+                        resultSet.getLong("table_count")));
+    }
+
+    /**
+     * 有 bucket/database/table 过滤条件时仍需 JOIN asset_snapshot，
+     * 使用 idx_asset_snapshot_trend_filtered 索引加速。
+     */
+    private List<RawTrend> loadTrendWithFilter(
+            String bucket, String database, String table, OffsetDateTime fromTime) {
+        MapSqlParameterSource parameters = new MapSqlParameterSource("from", fromTime);
+        StringBuilder filter = new StringBuilder();
+        if (bucket != null && !bucket.isBlank()) {
+            filter.append(" AND a.bucket = :bucket");
+            parameters.addValue("bucket", bucket.trim());
+        }
+        if (database != null && !database.isBlank()) {
+            filter.append(" AND a.db_name = :database");
+            parameters.addValue("database", database.trim());
+        }
+        if (table != null && !table.isBlank()) {
+            filter.append(" AND a.table_name = :table");
+            parameters.addValue("table", table.trim());
+        }
+
+        return namedJdbcTemplate.query("""
+                SELECT b.snapshot_at,
+                       COALESCE(SUM(a.size_bytes), 0) AS total_size_bytes,
+                       COUNT(DISTINCT a.table_key) AS table_count
+                FROM snapshot_batch b
+                JOIN asset_snapshot a ON a.batch_id = b.id AND a.scan_type = 'table'
+                WHERE b.status = 'PUBLISHED' AND b.snapshot_at >= :from
+                """ + filter + "\n"
+                + "GROUP BY b.id, b.snapshot_at\n"
+                + "ORDER BY b.snapshot_at"
+                , parameters, (resultSet, rowNum) -> new RawTrend(
+                        resultSet.getObject("snapshot_at", OffsetDateTime.class),
+                        resultSet.getLong("total_size_bytes"),
+                        resultSet.getLong("table_count")));
     }
 
     public ApiModels.Page<ApiModels.AssetItem> loadAssets(
