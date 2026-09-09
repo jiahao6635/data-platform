@@ -789,7 +789,7 @@ onMounted(initialize)
             <el-table-column prop="sizeBytes" label="当前容量" width="145" sortable="custom" align="right">
               <template #default="scope"><b class="size-value">{{ formatBytes(scope.row.sizeBytes) }}</b></template>
             </el-table-column>
-            <el-table-column prop="owner" label="所有者" min-width="120" sortable="custom" />
+            <el-table-column prop="owner" label="所有者" min-width="120" />
             <el-table-column prop="modTime" label="最后修改" width="172" sortable="custom">
               <template #default="scope">{{ formatDateTime(scope.row.modTime) }}</template>
             </el-table-column>
@@ -859,7 +859,7 @@ onMounted(initialize)
 
     <el-drawer
       v-model="partitionDrawer"
-      size="720px"
+      size="880px"
       direction="rtl"
       class="partition-drawer"
       destroy-on-close
@@ -877,6 +877,12 @@ onMounted(initialize)
         </el-table-column>
         <el-table-column prop="sizeBytes" label="容量" width="130" align="right">
           <template #default="scope"><b class="size-value">{{ formatBytes(scope.row.sizeBytes) }}</b></template>
+        </el-table-column>
+        <el-table-column prop="fileCount" label="文件数" width="110" align="right">
+          <template #default="scope">{{ formatNumber(scope.row.fileCount) }}</template>
+        </el-table-column>
+        <el-table-column prop="avgFileSize" label="平均文件大小" width="145" align="right">
+          <template #default="scope"><b class="size-value">{{ formatBytes(scope.row.avgFileSize) }}</b></template>
         </el-table-column>
         <el-table-column prop="modTime" label="最后修改" width="170">
           <template #default="scope">{{ formatDateTime(scope.row.modTime) }}</template>

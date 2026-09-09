@@ -79,6 +79,8 @@ export interface PartitionItem {
   id: number
   partition: string
   sizeBytes: number
+  fileCount: number
+  avgFileSize: number
   modTime: string
   accessTime: string | null
   owner: string
