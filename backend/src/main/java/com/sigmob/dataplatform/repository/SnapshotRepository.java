@@ -519,9 +519,7 @@ public class SnapshotRepository {
                 Long.class);
 
         List<ApiModels.PartitionItem> items = namedJdbcTemplate.query("""
-                        SELECT id, partition_name, size_bytes, file_count,
-                               size_bytes / NULLIF(file_count, 0) AS avg_file_size,
-                               mod_time, access_time,
+                        SELECT id, partition_name, size_bytes, mod_time, access_time,
                                owner_name, collect_host, collect_time
                         FROM asset_snapshot
                         """ + where + " ORDER BY partition_name DESC LIMIT :limit OFFSET :offset",
@@ -530,8 +528,6 @@ public class SnapshotRepository {
                         resultSet.getLong("id"),
                         resultSet.getString("partition_name"),
                         resultSet.getLong("size_bytes"),
-                        resultSet.getLong("file_count"),
-                        resultSet.getLong("avg_file_size"),
                         resultSet.getObject("mod_time", LocalDateTime.class),
                         resultSet.getObject("access_time", LocalDateTime.class),
                         resultSet.getString("owner_name"),

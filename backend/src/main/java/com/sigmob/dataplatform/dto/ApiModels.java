@@ -69,8 +69,6 @@ public final class ApiModels {
             long id,
             String partition,
             long sizeBytes,
-            long fileCount,
-            long avgFileSize,
             LocalDateTime modTime,
             LocalDateTime accessTime,
             String owner,
