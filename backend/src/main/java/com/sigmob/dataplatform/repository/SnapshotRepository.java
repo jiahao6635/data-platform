@@ -29,15 +29,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class SnapshotRepository {
 
-    private static final Map<String, String> SORT_COLUMNS = Map.of(
-            "sizeBytes", "size_bytes",
-            "modTime", "mod_time",
-            "bucket", "bucket",
-            "database", "db_name",
-            "table", "table_name",
-            "owner", "owner_name",
-            "partitionCount", "partition_count",
-            "collectTime", "collect_time");
+    private static final Map<String, String> SORT_COLUMNS = Map.ofEntries(
+            Map.entry("sizeBytes", "size_bytes"),
+            Map.entry("fileCount", "file_count"),
+            Map.entry("avgFileSize", "avg_file_size"),
+            Map.entry("modTime", "mod_time"),
+            Map.entry("bucket", "bucket"),
+            Map.entry("database", "db_name"),
+            Map.entry("table", "table_name"),
+            Map.entry("owner", "owner_name"),
+            Map.entry("partitionCount", "partition_count"),
+            Map.entry("collectTime", "collect_time"));
 
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedJdbcTemplate;

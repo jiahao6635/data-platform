@@ -758,6 +758,7 @@ onMounted(initialize)
             class="asset-table"
             height="calc(100vh - 310px)"
             row-key="tableKey"
+            :default-sort="{ prop: 'sizeBytes', order: 'descending' }"
             @sort-change="handleSort"
           >
             <el-table-column prop="bucket" label="Bucket" min-width="158" show-overflow-tooltip />
