@@ -144,14 +144,24 @@ public class SnapshotRepository {
                     record_count = stats.record_count,
                     table_count = stats.table_count,
                     partition_count = stats.partition_count,
-                    total_table_size_bytes = stats.total_table_size_bytes
+                    total_table_size_bytes = stats.total_table_size_bytes,
+                    bucket_count = stats.bucket_count,
+                    database_count = stats.database_count,
+                    partitioned_table_count = stats.partitioned_table_count,
+                    owner_count = stats.owner_count,
+                    latest_modified_at = stats.latest_modified_at
                 FROM (
                     SELECT batch_id,
                            MAX(collect_time) AS snapshot_at,
                            COUNT(*) AS record_count,
                            COUNT(DISTINCT table_key) FILTER (WHERE scan_type = 'table') AS table_count,
                            COUNT(*) FILTER (WHERE scan_type = 'table' AND partition_name <> '') AS partition_count,
-                           COALESCE(SUM(size_bytes) FILTER (WHERE scan_type = 'table'), 0) AS total_table_size_bytes
+                           COALESCE(SUM(size_bytes) FILTER (WHERE scan_type = 'table'), 0) AS total_table_size_bytes,
+                           COUNT(DISTINCT bucket) FILTER (WHERE scan_type = 'table') AS bucket_count,
+                           COUNT(DISTINCT (bucket, db_name)) FILTER (WHERE scan_type = 'table' AND db_name <> '') AS database_count,
+                           COUNT(DISTINCT table_key) FILTER (WHERE scan_type = 'table' AND partition_name <> '') AS partitioned_table_count,
+                           COUNT(DISTINCT owner_name) FILTER (WHERE scan_type = 'table' AND owner_name <> '') AS owner_count,
+                           MAX(mod_time) FILTER (WHERE scan_type = 'table') AS latest_modified_at
                     FROM asset_snapshot
                     WHERE batch_id = ?
                     GROUP BY batch_id
@@ -161,6 +171,21 @@ public class SnapshotRepository {
         if (updated != 1) {
             throw new IllegalStateException("快照为空、已发布或不存在: " + batchId);
         }
+
+        // zero_size_table_count 需要先按 table_key 聚合再过滤，单独计算
+        Integer zeroSizeCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM (
+                    SELECT 1
+                    FROM asset_snapshot
+                    WHERE batch_id = ? AND scan_type = 'table'
+                    GROUP BY table_key
+                    HAVING SUM(size_bytes) = 0
+                ) zero_tables
+                """, Integer.class, batchId);
+        jdbcTemplate.update(
+                "UPDATE snapshot_batch SET zero_size_table_count = ? WHERE id = ?",
+                zeroSizeCount != null ? zeroSizeCount : 0, batchId);
     }
 
     public void markFailed(UUID batchId) {
@@ -198,41 +223,32 @@ public class SnapshotRepository {
         }
         BatchState batch = latest.get();
         return jdbcTemplate.queryForObject("""
-                WITH table_rows AS (
-                    SELECT *
-                    FROM asset_snapshot
-                    WHERE batch_id = ? AND scan_type = 'table'
-                ), table_rollup AS (
-                    SELECT table_key, bucket, db_name, table_name,
-                           SUM(size_bytes) AS size_bytes
-                    FROM table_rows
-                    GROUP BY table_key, bucket, db_name, table_name
-                )
-                SELECT
-                    (SELECT COUNT(DISTINCT bucket) FROM table_rows) AS bucket_count,
-                    (SELECT COUNT(DISTINCT (bucket, db_name)) FROM table_rows WHERE db_name <> '') AS database_count,
-                    (SELECT COUNT(*) FROM table_rollup) AS table_count,
-                    (SELECT COUNT(*) FROM table_rows WHERE partition_name <> '') AS partition_count,
-                    (SELECT COUNT(DISTINCT table_key) FROM table_rows WHERE partition_name <> '') AS partitioned_table_count,
-                    (SELECT COUNT(DISTINCT owner_name) FROM table_rows WHERE owner_name <> '') AS owner_count,
-                    (SELECT COUNT(*) FROM table_rollup WHERE size_bytes = 0) AS zero_size_count,
-                    (SELECT COALESCE(SUM(size_bytes), 0) FROM table_rows) AS total_size_bytes,
-                    (SELECT MAX(mod_time) FROM table_rows) AS latest_modified_at,
-                    (SELECT COUNT(*) FROM asset_snapshot WHERE batch_id = ?) AS raw_record_count
+                SELECT total_table_size_bytes,
+                       bucket_count,
+                       database_count,
+                       table_count,
+                       partition_count,
+                       partitioned_table_count,
+                       owner_count,
+                       zero_size_table_count,
+                       latest_modified_at,
+                       record_count
+                FROM snapshot_batch
+                WHERE id = ?
                 """, (resultSet, rowNum) -> new ApiModels.Summary(
                         batch.id(),
                         batch.snapshotAt(),
-                        resultSet.getLong("total_size_bytes"),
+                        resultSet.getLong("total_table_size_bytes"),
                         resultSet.getLong("bucket_count"),
                         resultSet.getLong("database_count"),
                         resultSet.getLong("table_count"),
                         resultSet.getLong("partition_count"),
                         resultSet.getLong("partitioned_table_count"),
                         resultSet.getLong("owner_count"),
-                        resultSet.getLong("zero_size_count"),
+                        resultSet.getLong("zero_size_table_count"),
                         resultSet.getObject("latest_modified_at", LocalDateTime.class),
-                        resultSet.getInt("raw_record_count")),
-                batch.id(), batch.id());
+                        resultSet.getInt("record_count")),
+                batch.id());
     }
 
     public List<ApiModels.BucketMetric> loadBucketMetrics() {
