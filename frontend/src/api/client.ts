@@ -15,19 +15,30 @@ import type {
 } from '@/types'
 
 const API_ROOT = import.meta.env.VITE_API_ROOT ?? '/api/v1'
+const REQUEST_TIMEOUT_MS = 30_000
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_ROOT}${path}`, { credentials: 'include', ...init })
-  if (!response.ok) {
-    const contentType = response.headers.get('content-type') ?? ''
-    const isJson = contentType.includes('application/json')
-    const error = isJson
-      ? await response.json().catch(() => ({ message: `请求失败 (${response.status})` }))
-      : { message: `请求失败 (${response.status})` }
-    if (response.status === 401 && !path.startsWith('/auth/')) window.location.assign('/')
-    throw new Error(error.message ?? `请求失败 (${response.status})`)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    const response = await fetch(`${API_ROOT}${path}`, {
+      credentials: 'include',
+      signal: controller.signal,
+      ...init,
+    })
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') ?? ''
+      const isJson = contentType.includes('application/json')
+      const error = isJson
+        ? await response.json().catch(() => ({ message: `请求失败 (${response.status})` }))
+        : { message: `请求失败 (${response.status})` }
+      if (response.status === 401 && !path.startsWith('/auth/')) window.location.assign('/')
+      throw new Error(error.message ?? `请求失败 (${response.status})`)
+    }
+    return response.json() as Promise<T>
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return response.json() as Promise<T>
 }
 
 function queryString(params: Record<string, string | number | undefined>): string {

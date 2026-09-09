@@ -469,13 +469,14 @@ async function initialize() {
   readLoginError()
   try {
     authStatus.value = await api.authStatus()
-    if (!authStatus.value.authEnabled || authStatus.value.authenticated) {
-      await refreshDashboard()
-    }
   } catch (error) {
     authCheckError.value = error instanceof Error ? error.message : '无法检查登录状态'
   } finally {
     authLoading.value = false
+  }
+
+  if (!authStatus.value.authEnabled || authStatus.value.authenticated) {
+    await refreshDashboard()
   }
 }
 
